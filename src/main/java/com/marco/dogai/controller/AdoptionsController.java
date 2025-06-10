@@ -27,16 +27,11 @@ public class AdoptionsController {
 
     @GetMapping("/{user}/assistant")
     String inquire(@PathVariable String user, @RequestParam String question) {
-        var content = ai
+        return ai
                 .prompt()
                 .user(question)
                 .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, user))
                 .call()
                 .content();
-
-        return Objects.requireNonNull(content)
-                .replace("<think>", "")
-                .replace("</think>", "")
-                .trim();
     }
 }
