@@ -1,5 +1,6 @@
 package com.marco.dogai.controller;
 
+import com.marco.dogai.component.DogAdoptionScheduler;
 import com.marco.dogai.repository.DogRepository;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.PromptChatMemoryAdvisor;
@@ -30,6 +31,7 @@ public class AdoptionsController {
     private final ChatClient ai;
 
     public AdoptionsController(JdbcClient db,
+                               DogAdoptionScheduler scheduler,
                                ChatClient.Builder ai,
                                PromptChatMemoryAdvisor promptChatMemoryAdvisor,
                                DogRepository repository,
@@ -49,6 +51,7 @@ public class AdoptionsController {
         }
 
         this.ai = ai
+                .defaultTools(scheduler)
                 .defaultSystem(SYSTEM_PROMPT)
                 .defaultAdvisors(promptChatMemoryAdvisor,
                         new QuestionAnswerAdvisor(vectorStore)
