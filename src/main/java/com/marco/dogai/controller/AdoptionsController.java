@@ -1,14 +1,21 @@
 package com.marco.dogai.controller;
 
+import com.marco.dogai.model.DogAdoptionSuggestion;
+import com.marco.dogai.repository.DogRepository;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.PromptChatMemoryAdvisor;
+import org.springframework.ai.chat.client.advisor.vectorstore.QuestionAnswerAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
+import org.springframework.ai.document.Document;
+import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 
+import java.util.List;
 import java.util.Objects;
 
 @Controller
@@ -24,11 +31,30 @@ public class AdoptionsController {
 
     private final ChatClient ai;
 
-    public AdoptionsController(ChatClient.Builder ai,
-                               PromptChatMemoryAdvisor promptChatMemoryAdvisor) {
+    public AdoptionsController(JdbcClient db,
+                               ChatClient.Builder ai,
+                               PromptChatMemoryAdvisor promptChatMemoryAdvisor,
+                               DogRepository repository,
+                               VectorStore vectorStore) {
+        var count = db.sql("select count(*) from vector_store")
+                .query(Integer.class)
+                .single();
+
+        if (count == 0) {
+            repository.findAll().forEach(dog -> {
+                var dogDocument = new Document("id: %s, name: %s, description: %s".formatted(
+                        dog.id(), dog.name(), dog.description()
+                ));
+
+                vectorStore.add(List.of(dogDocument));
+            });
+        }
+
         this.ai = ai
                 .defaultSystem(SYSTEM_PROMPT)
-                .defaultAdvisors(promptChatMemoryAdvisor)
+                .defaultAdvisors(promptChatMemoryAdvisor,
+                        new QuestionAnswerAdvisor(vectorStore)
+                )
                 .build();
     }
 
@@ -40,6 +66,7 @@ public class AdoptionsController {
                 .user(question)
                 .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, user))
                 .call()
+                //.entity(DogAdoptionSuggestion.class)
                 .content();
     }
 }
