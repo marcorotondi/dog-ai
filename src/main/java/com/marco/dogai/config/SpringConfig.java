@@ -1,15 +1,27 @@
 package com.marco.dogai.config;
 
+import com.marco.dogai.repository.DogRepository;
+import io.modelcontextprotocol.client.McpClient;
+import io.modelcontextprotocol.client.McpSyncClient;
+import io.modelcontextprotocol.client.transport.HttpClientSseClientTransport;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.advisor.PromptChatMemoryAdvisor;
 import org.springframework.ai.chat.memory.MessageWindowChatMemory;
 import org.springframework.ai.chat.memory.repository.jdbc.JdbcChatMemoryRepository;
+import org.springframework.ai.document.Document;
+import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import javax.sql.DataSource;
+import java.util.List;
 
 @Configuration
 public class SpringConfig {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(SpringConfig.class);
 
     /*
     Advisors are like filters or interceptors. They're a great way to add to the body of a request or handle the response in a generic, cross-cutting kind of way.
@@ -31,6 +43,32 @@ public class SpringConfig {
         return PromptChatMemoryAdvisor
                 .builder(chatMessageWindow)
                 .build();
+    }
+
+    @Bean
+    public McpSyncClient mcpSyncClient() {
+        var mcp = McpClient
+                .sync(HttpClientSseClientTransport.builder("http://localhost:8001").build()).build();
+        mcp.initialize();
+        return mcp;
+    }
+
+    @Bean
+    public CommandLineRunner run(DogRepository repository,
+                                 VectorStore vectorStore) {
+        return (args) -> {
+            try {
+                vectorStore.similaritySearch("");
+            } catch (Exception e) {
+                LOGGER.info("Loading dogs...");
+                repository.findAll().forEach(dog -> {
+                    var dogDocument = new Document("id: %s, name: %s, description: %s".formatted(dog.id(), dog.name(), dog.description()));
+
+                    LOGGER.info("Adding document: {}", dogDocument);
+                    vectorStore.add(List.of(dogDocument));
+                });
+            }
+        };
     }
 
 

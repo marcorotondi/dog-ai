@@ -1,12 +1,13 @@
 package com.marco.dogai.controller;
 
-import com.marco.dogai.component.DogAdoptionScheduler;
 import com.marco.dogai.repository.DogRepository;
+import io.modelcontextprotocol.client.McpSyncClient;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.PromptChatMemoryAdvisor;
 import org.springframework.ai.chat.client.advisor.vectorstore.QuestionAnswerAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.document.Document;
+import org.springframework.ai.mcp.SyncMcpToolCallbackProvider;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Controller;
@@ -30,32 +31,15 @@ public class AdoptionsController {
 
     private final ChatClient ai;
 
-    public AdoptionsController(JdbcClient db,
-                               DogAdoptionScheduler scheduler,
+    public AdoptionsController(McpSyncClient mcpSyncClient,
                                ChatClient.Builder ai,
                                PromptChatMemoryAdvisor promptChatMemoryAdvisor,
-                               DogRepository repository,
                                VectorStore vectorStore) {
-        var count = db.sql("select count(*) from vector_store")
-                .query(Integer.class)
-                .single();
-
-        if (count == 0) {
-            repository.findAll().forEach(dog -> {
-                var dogDocument = new Document("id: %s, name: %s, description: %s".formatted(
-                        dog.id(), dog.name(), dog.description()
-                ));
-
-                vectorStore.add(List.of(dogDocument));
-            });
-        }
 
         this.ai = ai
-                .defaultTools(scheduler)
+                .defaultToolCallbacks(new SyncMcpToolCallbackProvider(mcpSyncClient))
+                .defaultAdvisors(promptChatMemoryAdvisor, new QuestionAnswerAdvisor(vectorStore))
                 .defaultSystem(SYSTEM_PROMPT)
-                .defaultAdvisors(promptChatMemoryAdvisor,
-                        new QuestionAnswerAdvisor(vectorStore)
-                )
                 .build();
     }
 
