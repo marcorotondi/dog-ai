@@ -29,24 +29,9 @@ public class AdoptionsController {
 
     private final ChatClient ai;
 
-    public AdoptionsController(JdbcClient db,
-                               ChatClient.Builder ai,
+    public AdoptionsController(ChatClient.Builder ai,
                                PromptChatMemoryAdvisor promptChatMemoryAdvisor,
-                               DogRepository repository,
                                VectorStore vectorStore) {
-        var count = db.sql("select count(*) from vector_store")
-                .query(Integer.class)
-                .single();
-
-        if (count == 0) {
-            repository.findAll().forEach(dog -> {
-                var dogDocument = new Document("id: %s, name: %s, description: %s".formatted(
-                        dog.id(), dog.name(), dog.description()
-                ));
-
-                vectorStore.add(List.of(dogDocument));
-            });
-        }
 
         this.ai = ai
                 .defaultSystem(SYSTEM_PROMPT)
