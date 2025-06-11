@@ -1,0 +1,31 @@
+networks:
+  net:
+    driver: bridge
+services:
+  chroma-db:
+    image: ghcr.io/chroma-core/chroma:latest
+    environment:
+      - IS_PERSISTENT=TRUE
+    volumes:
+      - chroma-data:/chroma/chroma/
+    ports:
+      - 8000:8000
+    networks:
+      - net
+  postgres:
+    image: postgres
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    volumes:
+      - postgres-data:/chroma/chroma/
+    ports:
+      - 5432:5432
+    networks:
+      - net
+
+volumes:
+  chroma-data:
+    driver: local
+  postgres-data:
+    driver: local
