@@ -17,6 +17,7 @@ import org.springframework.context.annotation.Configuration;
 
 import javax.sql.DataSource;
 import java.util.List;
+import java.util.Objects;
 
 @Configuration
 public class SpringConfig {
@@ -57,9 +58,8 @@ public class SpringConfig {
     public CommandLineRunner run(DogRepository repository,
                                  VectorStore vectorStore) {
         return (args) -> {
-            try {
-                vectorStore.similaritySearch("");
-            } catch (Exception e) {
+            var documents = vectorStore.similaritySearch("dog");
+            if (Objects.requireNonNull(documents).isEmpty()) {
                 LOGGER.info("Loading dogs...");
                 repository.findAll().forEach(dog -> {
                     var dogDocument = new Document("id: %s, name: %s, description: %s".formatted(dog.id(), dog.name(), dog.description()));
@@ -70,6 +70,4 @@ public class SpringConfig {
             }
         };
     }
-
-
 }
