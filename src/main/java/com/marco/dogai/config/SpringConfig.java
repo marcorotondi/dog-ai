@@ -42,22 +42,4 @@ public class SpringConfig {
                 .builder(chatMessageWindow)
                 .build();
     }
-
-
-    @Bean
-    public CommandLineRunner run(DogRepository repository,
-                                 VectorStore vectorStore) {
-        return (args) -> {
-            var documents = vectorStore.similaritySearch("dog");
-            if (Objects.requireNonNull(documents).isEmpty()) {
-                LOGGER.info("Loading dogs...");
-                repository.findAll().forEach(dog -> {
-                    var dogDocument = new Document("id: %s, name: %s, description: %s".formatted(dog.id(), dog.name(), dog.description()));
-
-                    LOGGER.info("Adding document: {}", dogDocument);
-                    vectorStore.add(List.of(dogDocument));
-                });
-            }
-        };
-    }
 }
